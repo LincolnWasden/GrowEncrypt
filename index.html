@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Encryption Form</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+</head>
+<body>
+  <h1>Filter Encryption Form</h1>
+  <form id="filter-form">
+    <label for="secret-key">Secret Key:</label>
+    <input type="text" id="secret-key" name="secret-key" required>
+    <br>
+    <label for="column">Column:</label>
+    <input type="text" id="column" name="column" required>
+    <br>
+    <label for="operator">Operator:</label>
+    <input type="text" id="operator" name="operator" required>
+    <br>
+    <label for="value">Value:</label>
+    <input type="text" id="value" name="value" required>
+    <br>
+    <button type="submit">Generate Code</button>
+  </form>
+  <pre id="output"></pre>
+  <script>
+     const { crypto } = require('crypto');
+function encryptMessage(message, secretKey) {
+  const algorithm = "aes-256-cbc";
+  const initVector = crypto.randomBytes(16);
+  const cipher = crypto.createCipheriv(algorithm, secretKey, initVector);
+  let encryptedData = cipher.update(message, "utf-8", "hex");
+  encryptedData += cipher.final("hex");
+  return initVector.toString('hex') + '.' + encryptedData;
+}
+
+function decryptMessage(encryptedMessage, secretKey) {
+  const algorithm = "aes-256-cbc";
+  const [iv, message] = encryptedMessage.split('.');
+  const decipher = crypto.createDecipheriv(algorithm, secretKey, Buffer.from(iv, 'hex'));
+  let decryptedData = decipher.update(message, "hex", "utf-8");
+  decryptedData += decipher.final("utf8");
+  return decryptedData;
+}
+    // The encryptMessage and decryptMessage functions go here
+    document.getElementById('filter-form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const secretKey = document.getElementById('secret-key').value;
+      const column = document.getElementById('column').value;
+      const operator = document.getElementById('operator').value;
+      const value = document.getElementById('value').value;
+
+      let filters = JSON.stringify({
+        filters: {
+          simpleFilter: {
+            column: column,
+            operator: operator,
+            value: value,
+          },
+        },
+      });
+
+      const encryptedFilters = encryptMessage(filters, secretKey);
+
+      const output = `
+window.postMessage({
+  event: 'applyFilters',
+  data: {
+    filters: '${encryptedFilters}'
+  }
+});`;
+      document.getElementById('output').textContent = output;
+    });
+  </script>
+</body>
+</html>
